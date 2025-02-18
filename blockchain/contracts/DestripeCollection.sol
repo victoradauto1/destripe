@@ -41,7 +41,7 @@ contract DestripeCollection is ERC721, ERC721Burnable, Ownable, INFTCollection {
     }
 
     function getLastTokenId() external view returns (uint256) {
-        return nextTokenId;
+        return nextTokenId - 1;
     }
 
     function setApprovalForAll(

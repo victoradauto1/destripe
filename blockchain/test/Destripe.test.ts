@@ -7,41 +7,161 @@ import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 
 describe("Destripe", function () {
- 
   async function deployFixture() {
     const [owner, otherAccount] = await hre.ethers.getSigners();
 
     const DestripeCoin = await hre.ethers.getContractFactory("DestripeCoin");
-    const destripeCoin = await DestripeCoin.deploy(owner.getAddress(), owner.getAddress());
+    const destripeCoin = await DestripeCoin.deploy(
+      owner.getAddress(),
+      owner.getAddress()
+    );
 
     await destripeCoin.waitForDeployment();
 
-    const DestripeCollection = await hre.ethers.getContractFactory("DestripeCollection");
-    const destripeColletion = await DestripeCollection.deploy(owner.getAddress());
+    const DestripeCollection = await hre.ethers.getContractFactory(
+      "DestripeCollection"
+    );
+    const destripeCollection = await DestripeCollection.deploy(
+      owner.getAddress()
+    );
 
-    await destripeColletion.waitForDeployment();
+    await destripeCollection.waitForDeployment();
 
     const Destripe = await hre.ethers.getContractFactory("Destripe");
-    const destripe = await Destripe.deploy(destripeCoin.getAddress(), destripeColletion.getAddress() );
+    const destripe = await Destripe.deploy(
+      destripeCoin.getAddress(),
+      destripeCollection.getAddress()
+    );
 
     await destripe.waitForDeployment();
 
-    await destripeColletion.setAuthorized(destripe.getAddress());
+    await destripeCollection.setAuthorized(destripe.getAddress());
 
-    await destripeCoin.mint(otherAccount.getAddress(),ethers.parseEther("1") );
+    await destripeCoin.mint(otherAccount.getAddress(), ethers.parseEther("1"));
 
-    return { destripe, destripeCoin, destripeColletion, owner, otherAccount };
+    return { destripe, destripeCoin, destripeCollection, owner, otherAccount };
   }
 
-  describe("Deployment", function () {
-    it("Should set the right unlockTime", async function () {
-      const { destripe, owner, otherAccount  } = await loadFixture(deployFixture);
+  describe("Destripe", function () {
+    it("Should do first payment", async function () {
+      const {
+        destripe,
+        destripeCoin,
+        destripeCollection,
+        owner,
+        otherAccount,
+      } = await loadFixture(deployFixture);
 
-      expect(1).to.equal(1);
+      const instance = destripeCoin.connect(otherAccount);
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.01")
+      );
+
+      expect(await destripe.pay(otherAccount.address)).to.emit(
+        destripe,
+        "Granted"
+      );
     });
 
-    
-  });
+    it("Should NOT do first payment", async function () {
+      const {
+        destripe,
+        destripeCoin,
+        otherAccount,
+      } = await loadFixture(deployFixture);
 
-  
+      const instance = destripeCoin.connect(otherAccount);
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.0001")
+      );
+
+      expect(await destripe.pay(otherAccount.address)).to.emit(
+        destripe,
+        "Revoked"
+      );
+    });
+
+    it("Should do second payment", async function () {
+      const {
+        destripe,
+        destripeCoin,
+        destripeCollection,
+        owner,
+        otherAccount,
+      } = await loadFixture(deployFixture);
+
+      const instance = destripeCoin.connect(otherAccount);
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.01")
+      );
+
+      await destripe.pay(otherAccount.address);
+   
+      await time.increase(31*24*60*60);
+
+      expect(await destripe.pay(otherAccount.address)).to.emit(destripe, "Paid");
+    });
+
+    it("Should NOT do second payment", async function () {
+      const {
+        destripe,
+        destripeCoin,
+        destripeCollection,
+        owner,
+        otherAccount,
+      } = await loadFixture(deployFixture);
+
+      const instance = destripeCoin.connect(otherAccount);
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.01")
+      );
+
+      await destripe.pay(otherAccount.address);
+   
+      await time.increase(31*24*60*60);
+
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.000001")
+      );
+
+      expect(await destripe.pay(otherAccount.address)).to.emit(destripe, "Revoked");
+    });
+
+    it("Should do second payment after Revoked", async function () {
+      const {
+        destripe,
+        destripeCoin,
+        destripeCollection,
+        owner,
+        otherAccount,
+      } = await loadFixture(deployFixture);
+
+      const instance = destripeCoin.connect(otherAccount);
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.01")
+      );
+
+      await destripe.pay(otherAccount.address);
+   
+      await time.increase(31*24*60*60);
+
+      await instance.approve(
+        destripe.getAddress(),
+        hre.ethers.parseEther("0.000001")
+      );
+
+      await destripe.pay(otherAccount.address);
+
+      await instance.approve( destripe.getAddress(),
+      hre.ethers.parseEther("0.01"));
+
+      expect(await destripe.pay(otherAccount.address)).to.emit(destripe, "Granted");
+    });
+  });
 });
