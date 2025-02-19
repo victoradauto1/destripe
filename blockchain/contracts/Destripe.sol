@@ -35,6 +35,10 @@ contract Destripe is Ownable, ERC721Holder {
         acceptToken = IERC20(tokenAddress);
     }
 
+    function getCustomers( ) external view returns(address[] memory){
+        return customers;
+    }
+
     function setMonthlyAmount(uint newMonthlyAmount) external onlyOwner {
         monthlyAmount = newMonthlyAmount;
     }

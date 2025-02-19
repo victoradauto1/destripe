@@ -2,7 +2,8 @@
     "scripts": {
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
-    "coverage": "npx harhdat coverage"
+    "coverage": "npx harhdat coverage",
+    "deploy":"npx hardhat ignition deploy ignition/modules/Destripe.ts --network amoy"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
